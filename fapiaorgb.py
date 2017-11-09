@@ -10,7 +10,8 @@ from pylab import *
 from sklearn.cluster import KMeans
 from scipy.misc import imsave
 from scipy.ndimage import morphology,measurements
-# import matplotlib.pyplot as plt 
+# import matplotlib.pyplot as plt
+from skimage import draw 
 
 imgname = './fapiao/009.jpeg'
 
@@ -87,7 +88,7 @@ img_stamp_half = img_stamp[0:thirdw,:,:]
 
 # imsave("stamp.png",img_stamp)
 
-# 对红章图进行腐蚀膨胀，边缘检测
+# 对红章图进行连通域标记，选择面积第二大的区域为红章区域
 bn_stamp = np.zeros((thirdw,h))
 maskstamp_third = maskstamp[0:thirdw,:]
 bn_stamp[maskstamp_third] = 1
@@ -113,21 +114,64 @@ for i in range(nbr):
 	count[i] = np.sum(labels_open==i)
 	# print(count[i])
 index = np.argsort(-count)[1]
-print(index)
+# print(index)
 
-a = (labels_open==index)
+maskstamponly = (labels_open==index)
 # print(a.shape)
-z = zeros((thirdw,h))
-z[a] = 1
+stamp_only = zeros((thirdw,h))
+stamp_only[maskstamponly] = 1
 
-gray()
+# gray()
+# figure()
+# imshow(stamp_only)
+# show()
+
+#计算红章中心点坐标，计算红章宽高
+stamp_points = np.where(stamp_only==1)
+# print(points)
+stamp_x = np.average(stamp_points[0])
+stamp_y = np.average(stamp_points[1])
+
+stamp_h = np.max(stamp_points[0])-np.min(stamp_points[0])
+stamp_w = np.max(stamp_points[1])-np.min(stamp_points[1])
+# print(stamp_x,stamp_y,stamp_w,stamp_h)
+
+# 在原图上绘制红章中心点显示
+# rr, cc=draw.circle(int(stamp_x),int(stamp_y),5)
+# draw.set_color(img,[rr, cc],[0,255,0])
+# figure()
+# imshow(img)
+# show()
+
+
+#按比例获取截图区域，右下（金额），右上（发票号，日前），左上（号）三个区域
+ratio_right = 1.15
+ratio_right_r = 7
+start_rt =int(stamp_w/ratio_right+np.max(stamp_points[1])) #列
+# end_rt = int(np.max(stamp_points[0])+5) #行
+end_rt = int(stamp_h/ratio_right_r+np.max(stamp_points[0])) 
+croprighttop = img[0:end_rt,start_rt:h,:] # [行，列，：]
+
 figure()
-imshow(z)
+imshow(croprighttop)
 show()
 
+ratio_right2 = 0.28#0.3
+start_rb_r = int(w/2)
+end_rb_r = int(stamp_h/ratio_right2+np.max(stamp_points[0]))
+start_rb_c = int(stamp_w/2+np.max(stamp_points[1]))
+croprightbotm = img[start_rb_r:end_rb_r,start_rb_c:h,:]
+figure()
+imshow(croprightbotm)
+show()
 
+end_lf_c = int(np.min(stamp_points[1])-(stamp_w/1.15))
+end_lf_r = int(stamp_x)
+cropleft = imgnoBG[0:end_lf_r,0:end_lf_c,:]
 
-
+figure()
+imshow(cropleft)
+show()
 
 
 
