@@ -14,38 +14,72 @@ from scipy.ndimage import morphology,measurements
 from skimage import draw 
 import matplotlib.pyplot as plt
 import image_pross
+import time
 
-imgname = './fapiao/001.jpg'
+imgname = './fapiao/009.jpeg'
 
-
+time_start=time.time()
 #放弃7图和2图,3图
 img_org =  Image.open(imgname)
 img = np.array(Image.open(imgname))
 
 # print(img.shape)
 
+#lab色彩空间去背景，不够自适应
+# img_lab = cv2.cvtColor(np.uint8(img),cv2.COLOR_BGR2Lab)[:,:,0]
+# _ , img_bn = cv2.threshold(img_lab,160,255,cv2.THRESH_BINARY)
+
+# print("lab")
+# time_end=time.time()
+# print( time_end-time_start)
+
+# gray()
+# figure()
+# imshow(img_bn)
+# show()
+
+# print(img_bn)
+# img_bn = img_bn/255
+
 #去背景，kmeans，得到无背景图imgnoBG
 img = img/255.0
-w,h,d = tuple(img.shape)
-img2D = img.reshape((w*h),d)
-kmeans = KMeans(n_clusters = 2,random_state = 0).fit(img2D)
-labels2D = kmeans.predict(img2D)
+# w,h,d = tuple(img.shape)
+# img2D = img.reshape((w*h),d)
+# kmeans = KMeans(n_clusters = 2,random_state = 0).fit(img2D)
+# labels2D = kmeans.predict(img2D)
 
-labels = labels2D.reshape(w,h)
-num1 = sum(labels)
- #labels=1 的像素点占多数，labels=1的像素点为背景点
-if num1>w*h/2: 
-	maskbg = 1-labels
-else:
-	maskbg = labels.copy()
-imgcopy = img.copy()
-maskbg = (maskbg==0)
-imgcopy[maskbg] = 0
-imgnoBG = imgcopy
+# img = img/255
+w,h,d = tuple(img.shape)
+# wthird = int(w/3)
+# hthird = int(h/3)
+# img_third = img[0:wthird,0:hthird,:]
+# img2D = img_third.reshape((wthird*hthird),d)
+# kmeans = KMeans(n_clusters = 2,random_state = 0).fit(img2D)
+# labels2D = kmeans.predict(img2D)
+
+
+# labels = labels2D.reshape(w,h)
+# num1 = sum(labels)
+#  #labels=1 的像素点占多数，labels=1的像素点为背景点
+# if num1>w*h/2: 
+# 	maskbg = 1-labels
+# else:
+# 	maskbg = labels.copy()
+# imgcopy = img.copy()
+# maskbg = (maskbg==0)
+# imgcopy[maskbg] = 0
+# imgnoBG = imgcopy
+
+# print("KMeans")
+# time_end=time.time()
+# print( time_end-time_start)
+
 
 # figure()
 # imshow(imgnoBG)
 # show()
+
+imgnoBG = img
 
 # 在去背景图的基础上提取红色信息，包括表格和红章
 imgr = imgnoBG[:,:,0]
@@ -60,7 +94,7 @@ imgcopy = imgnoBG.copy()
 imgcopy[maskR] = 0
 imgR = imgnoBG-imgcopy
 
-maskB1 = imgb>imgr
+maskB1 = imgb>imgr*1.1
 maskB2 = imgb>imgg
 maskB = maskB1*maskB2
 maskB_inv = np.logical_not(maskB)
@@ -72,14 +106,17 @@ imgcopy2[maskB_inv] = 0
 # imgB = imgnoBG-imgcopy2
 imgB  = imgcopy2
 
-# imgcopy3 = imgnoBG.copy()
-# maskB = np.logical_not(maskB)
-# imgcopy3[maskB] = 0
-# imgnoB = img-imgcopy3
+print("rgb separate")
+time_end=time.time()
+print( time_end-time_start)
 
+
+# gray()
 # figure()
 # imshow(imgB)
 # show()
+
+
 
 # imsave("fapiaoR.png",imgR)
 # 在红色图上提取红章
@@ -93,13 +130,10 @@ imgcopy[maskstamp] = 0
 img_stamp = imgR-imgcopy
 thirdw = int(w/3)
 img_stamp_half = img_stamp[0:thirdw,:,:]
-# print(img_stamp_half.shape)
 
 # figure()
 # imshow(img_stamp_half)
 # show()
-
-# imsave("stamp.png",img_stamp)
 
 # 对红章图进行连通域标记，选择面积第二大的区域为红章区域
 bn_stamp = np.zeros((thirdw,h))
@@ -115,8 +149,7 @@ bn_stamp[maskstamp_third] = 1
 # stamp_open = morphology.binary_erosion(bn_stamp,ones((2,2)),iterations = 2)
 # stamp_open = morphology.binary_dilation(stamp_open,ones((2,2)),iterations = 1)
 labels_open,nbr  = measurements.label(bn_stamp)
-# count = zeros(nbr)
-# print(nbr)
+
 # imsave("label.png",labels_open)
 # gray()
 # figure()
@@ -194,8 +227,6 @@ cropleft = img[0:end_lf_r,star_lf_c:end_lf_c,:]
 
 #左上提取发票号
 
-# print(cropleft[5,6,0])
-
 cropleft_lab = cv2.cvtColor(np.uint8(cropleft*255),cv2.COLOR_BGR2Lab)[:,:,0]
 _ , cropleft_bn = cv2.threshold(cropleft_lab,120,255,cv2.THRESH_BINARY)
 
@@ -223,12 +254,13 @@ crop_numbers = croprighttop[0:data_start_r,:]
 # figure()
 # imshow(crop_numbers)
 # show()
+
 index = image_pross.projection(crop_numbers,"col",5)[0]
 # print(index)
 #取 index序列中距离最大的两个点求中间位置
-diff_index = image_pross.diff_seq(index)
+diff_index = image_pross.diff_seq_sec(index)
 # print(diff_index)
-indexmax = np.argmax(diff_index)
+indexmax = np.argmax(diff_index)*2
 # print(indexmax)
 # number1_end_c = int((index[15]+index[16])/2)
 number1_end_c = int((index[indexmax]+index[indexmax-1])/2)
@@ -301,6 +333,8 @@ number2_box = [start_rt+number1_end_c,code2_end_r,h-1,data_start_r]
 data_box = [start_rt+data_start_c,data_start_r,h-1,end_rt]
 money_box = [start_rb_c+money_start_c,start_rb_r+money_start_r,start_rb_c+money_end_c,start_rb_r+money_end_r]
 # print(img.shape,data_box)
+time_end=time.time()
+print( time_end-time_start)
 
 imgout = image_pross.draw_box(img_org,code1_box,"code1")
 imgout = image_pross.draw_box(imgout,code2_box,"code2")
